@@ -2,7 +2,7 @@
 
 import type React from "react"
 import Link from "next/link"
-import { ArrowLeft, Home } from "lucide-react"
+import { ArrowLeft, Home } from 'lucide-react'
 import BottomNav from "./BottomNav"
 
 interface LayoutProps {

@@ -7,8 +7,9 @@ import Layout from "@/components/Layout"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, MapPin, Users, Clock, Star } from "lucide-react"
+import { Calendar, MapPin, Users, Clock, Star } from 'lucide-react'
 import Image from "next/image"
+import useLocalStorage from "@/hooks/useLocalStorage"
 
 interface EventDetailsProps {
   params: { eventId: string }
@@ -30,42 +31,19 @@ interface Event {
   type?: string
 }
 
-// Custom hook to manage registration state
+// 使用自定义钩子管理注册状态
 const useRegistrationState = (eventId: string) => {
-  const [isRegistered, setIsRegistered] = useState(false)
-
-  useEffect(() => {
-    // Check if user is registered for this event
-    try {
-      const registeredEvents = JSON.parse(localStorage.getItem("registeredEvents") || "[]")
-      setIsRegistered(registeredEvents.includes(eventId))
-    } catch (e) {
-      console.error("Error reading from localStorage", e)
-    }
-  }, [eventId])
+  const [registeredEvents, setRegisteredEvents] = useLocalStorage<string[]>("registeredEvents", [])
+  const isRegistered = registeredEvents.includes(eventId)
 
   const register = () => {
-    try {
-      const registeredEvents = JSON.parse(localStorage.getItem("registeredEvents") || "[]")
-      if (!registeredEvents.includes(eventId)) {
-        registeredEvents.push(eventId)
-        localStorage.setItem("registeredEvents", JSON.stringify(registeredEvents))
-        setIsRegistered(true)
-      }
-    } catch (e) {
-      console.error("Error writing to localStorage", e)
+    if (!isRegistered) {
+      setRegisteredEvents([...registeredEvents, eventId])
     }
   }
 
   const unregister = () => {
-    try {
-      let registeredEvents = JSON.parse(localStorage.getItem("registeredEvents") || "[]")
-      registeredEvents = registeredEvents.filter((id: string) => id !== eventId)
-      localStorage.setItem("registeredEvents", JSON.stringify(registeredEvents))
-      setIsRegistered(false)
-    } catch (e) {
-      console.error("Error writing to localStorage", e)
-    }
+    setRegisteredEvents(registeredEvents.filter(id => id !== eventId))
   }
 
   return { isRegistered, register, unregister }
@@ -76,44 +54,21 @@ const EventDetails: React.FC<EventDetailsProps> = ({ params }) => {
   const { isRegistered, register, unregister } = useRegistrationState(params.eventId)
   const [event, setEvent] = useState<Event | null>(null)
   const [loading, setLoading] = useState(true)
+  const [allEvents, setAllEvents] = useLocalStorage<Record<string, Event>>("allEvents", {})
 
   useEffect(() => {
-    // Load event details
-    const loadEvent = () => {
-      try {
-        const allEvents = JSON.parse(localStorage.getItem("allEvents") || "{}")
-        const eventData = allEvents[params.eventId]
-
-        if (eventData) {
-          setEvent(eventData)
-        } else {
-          // Fallback to default event data
-          setEvent({
-            id: params.eventId,
-            title: "Campus Music Festival",
-            description:
-              "Join us for a night of amazing performances by talented student musicians. There will be various genres including rock, jazz, classical, and more. Food and drinks will be available for purchase.",
-            date: "2023-07-15",
-            time: "19:00 - 23:00",
-            location: "University Amphitheater",
-            organizer: "Student Music Association",
-            maxParticipants: 200,
-            currentParticipants: 156,
-            checkInPoints: 15,
-            tags: ["Music", "Entertainment", "Campus"],
-            image: "/vibrant-festival-crowd.png",
-          })
-        }
-      } catch (e) {
-        console.error("Error loading event", e)
-        // Fallback to default event data
+    // 加载事件详情
+    if (Object.keys(allEvents).length > 0) {
+      const eventData = allEvents[params.eventId]
+      
+      if (eventData) {
+        setEvent(eventData)
+      } else {
+        // 回退到默认事件数据
         setEvent({
           id: params.eventId,
           title: "Campus Music Festival",
-          description:
-            "Join us for a night of amazing performances by talented student musicians. There will be various genres including rock, jazz, classical, and more. Food and drinks will be available for purchase.",
-          date: "2023-07-15",
-          time: "19  Food and drinks will be available for purchase.",
+          description: "Join us for a night of amazing performances...",
           date: "2023-07-15",
           time: "19:00 - 23:00",
           location: "University Amphitheater",
@@ -127,22 +82,18 @@ const EventDetails: React.FC<EventDetailsProps> = ({ params }) => {
       }
       setLoading(false)
     }
-
-    loadEvent()
-  }, [params.eventId])
+  }, [params.eventId, allEvents])
 
   const handleRegister = () => {
-    // In a real app, you would send this to your backend
     console.log(`Registering for event ${event?.id}`)
     register()
   }
 
   const handleCancelRegistration = () => {
-    // In a real app, you would send this to your backend
     console.log(`Cancelling registration for event ${event?.id}`)
     unregister()
 
-    // Navigate back to My Events page after a short delay
+    // 导航回"我的事件"页面
     setTimeout(() => {
       router.push("/events")
     }, 500)
